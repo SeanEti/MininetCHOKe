@@ -44,17 +44,20 @@ def CHOKeNet():
     h3 = net.get('h3')
     h4 = net.get('h4')
 
-    info('*** Adding delay of 20ms to all links\n')
-    os.system("sudo tc qdisc add dev s1-eth1 root netem delay 20ms")
-    os.system("sudo tc qdisc add dev s1-eth2 root netem delay 20ms")
-    os.system("sudo tc qdisc add dev s1-eth3 root netem delay 20ms")
-    os.system("sudo tc qdisc add dev s2-eth1 root netem delay 20ms")
-    os.system("sudo tc qdisc add dev s2-eth2 root netem delay 20ms")
-    os.system("sudo tc qdisc add dev s2-eth3 root netem delay 20ms")
+    info('*** Adding bandwidth of 1Mbit to all links\n')
+    os.system("sudo tc qdisc add dev s1-eth1 root netem rate 1mbit")
+    os.system("sudo tc qdisc add dev s1-eth2 root netem rate 1mbit")
+    os.system("sudo tc qdisc add dev s2-eth2 root netem rate 1mbit")
+    os.system("sudo tc qdisc add dev s2-eth3 root netem rate 1mbit")
+
+    info('*** configuring choke between switches\n')
+    os.system("sudo tc qdisc add dev s2-eth1 root netem rate 100kbit")
+    os.system("sudo tc qdisc add dev s1-eth3 root handle 1: netem rate 100kbit")
+    os.system("sudo tc qdisc add dev s1-eth3 parent 1: handle 2: choke limit 10000 min 0 max 9000 bandwidth 100kbit probability 0.5")
 
     info('*** Launching Wireshark on all hosts\n')
-    h1.cmd('wireshark &')
-    h2.cmd('wireshark &')
+    #h1.cmd('wireshark &')
+    #h2.cmd('wireshark &')
     h3.cmd('wireshark &')
     h4.cmd('wireshark &')
 
@@ -64,16 +67,15 @@ def CHOKeNet():
     h3.cmd('iperf3 -s &')
 
     info('*** Launching iPerf3 in UDP server mode on host h4\n')
-    h4.cmd('iperf3 -s -u &')
+    h4.cmd('iperf3 -s &')
 
     info('*** Launching iPerf3 in TCP client mode on host h1\n')
-    h1.cmd("iperf3 -c 10.0.0.3 -t 60 -J > TCP.json &")
+    h1.cmd("iperf3 -c 10.0.0.3 -t 300 -J > TCP.json &")
 
+    time.sleep(10)
     info('*** Launching iPerf3 in UDP client mode on host h2\n')
-    h2.cmd("iperf3 -u -c 10.0.0.4 -t 60 -J > UDP.json &")
-    
-    info('*** Running iPerf3 - 60 seconds...\n')
-    time.sleep(60)
+    h2.cmd("iperf3 -u -c 10.0.0.4 -t 300 -J > UDP.json &")
+
     
     info('*** Running CLI\n' )
     CLI(net)
