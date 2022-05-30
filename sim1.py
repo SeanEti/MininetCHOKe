@@ -111,14 +111,15 @@ def CHOKeNet():
         os.system("sudo tc qdisc add dev s2-eth" + str(i) + " root netem rate 10mbit delay 1ms")
 
     info('*** configuring choke between switches\n')
-    os.system("sudo tc qdisc add dev s2-eth1 root netem rate 1gbit delay 1ms")  # incoming traffic
+    os.system("sudo tc qdisc add dev s2-eth1 root netem rate 1mbit delay 1ms")  # incoming traffic
     # outgoing traffic -> choke
     os.system("sudo tc qdisc add dev s1-eth1 root handle 1: tbf rate 1mbit burst 50000 limit 524288 ")
-    os.system("sudo tc qdisc add dev s1-eth1 parent 1: handle 2: choke limit 65536 max 32768 min 4096 burst 4097 avpkt 1000 bandwidth 1mbit probability 0.5")  #choke config
-    #os.system("sudo tc qdisc add dev s1-eth1 parent 1: handle 2: red limit 524288 max 262144 min 32768 burst 64 avpkt 1000 bandwidth 1mbit probability 0.5")   #red config for comparison
+    #os.system("sudo tc qdisc add dev s1-eth1 parent 1: handle 2: choke limit 65536 max 32768 min 4096 burst 4097 avpkt 1000 bandwidth 1mbit probability 0.5")  #choke config
+    os.system("sudo tc qdisc add dev s1-eth1 parent 1: handle 2: red limit 524288 max 262144 min 32768 burst 64 avpkt 1000 bandwidth 1mbit probability 0.5")   #red config for comparison
 
     info('*** Launching Wireshark on bottleneck link\n')
     net.get('s1').cmd('wireshark &')
+
 
     raw_input("Press Enter to start tcp&udp streams...")
 
@@ -129,17 +130,17 @@ def CHOKeNet():
             net.host.cmd('iperf3 -s &')
 
     info('*** Launching iPerf3 in UDP client mode on host hUDP\n')
-    info('*** ' + str(net.get('hUDP')) + " : " + "iperf3 -u -c 10.0.0.100 -t 180 -b 2mbit -l 1kbit &\n")    #print the cmd
-    net.get('hUDP').cmd('iperf3 -u -c 10.0.0.100 -t 180 -b 2mbit -l 1kbit &')
+    info('*** ' + str(net.get('hUDP')) + " : " + "iperf3 -u -c 10.0.0.100 -t 140 -b 2mbit -l 1kbit &\n")    #print the cmd
+    net.get('hUDP').cmd('iperf3 -u -c 10.0.0.100 -t 140 -b 2mbit -l 1kbit &')
 
     
     info('*** Launching iPerf3 in TCP client mode on host h1..32\n')
     for net.host in net.hosts:
         if(not(str(net.host)[0] == 's' or net.host == net.get('hUDP'))):
             time.sleep(0.25)
-            info('*** ' + str(net.host) + " : " + 'iperf3 -c 10.0.0.'  + str(200 + int(str(net.host)[1:3])) + ' -t 180  &\n')   #print the cmd
-            net.host.cmd('iperf3 -c 10.0.0.' +str(200 + int(str(net.host)[1:3])) + ' -t 180  &')
-    
+            info('*** ' + str(net.host) + " : " + 'iperf3 -c 10.0.0.'  + str(200 + int(str(net.host)[1:3])) + ' -t 140  &\n')   #print the cmd
+            net.host.cmd('iperf3 -c 10.0.0.' +str(200 + int(str(net.host)[1:3])) + ' -t 140 -w 300k  &')
+
     
     info('*** Running CLI\n' )
     CLI(net)
